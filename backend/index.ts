@@ -2,6 +2,7 @@ import express from "express";
 import http from "http";
 import { Server } from "socket.io";
 import cors from "cors";
+import router from "next/router";
 
 const app = express();
 const server = http.createServer(app);
@@ -71,20 +72,39 @@ io.on("connection", (socket) => {
     }
     socket.leave(roomId);
   });
-  socket.on("disconnect", () => {
-    const roomId = [...socket.rooms].find((room) => rooms[room]);
-    if (roomId) {
-      const room = rooms[roomId];
-      if (room) {
-        // Remove the disconnected player
-        const updatedPlayers = rooms[roomId].filter(
-          (player) => player.id !== socket.id
-        );
-        rooms[roomId] = updatedPlayers;
+  socket.on("startGame", ({ roomId }) => {
+    io.to(roomId).emit("gameStarted");
+  });
+  socket.on("joinGameRoom", ({ roomId, username }) => {
+    socket.join(roomId);
 
-        // Notify remaining players
-        io.to(roomId).emit("updatePlayers", updatedPlayers);
-      }
+    // If the room doesn't exist in our rooms object, initialize it
+    if (!rooms[roomId]) {
+      rooms[roomId] = [];
+    }
+
+    // Add the player if they're not already in the room
+    const playerExists = rooms[roomId].find(
+      (player) => player.username === username
+    );
+    if (!playerExists) {
+      rooms[roomId].push({
+        id: socket.id,
+        username: username,
+      });
+    }
+
+    // Emit the updated player list to all clients in the room
+    io.to(roomId).emit("updateGamePlayers", rooms[roomId]);
+
+    // Debug log
+    console.log(`Players in room ${roomId}:`, rooms[roomId]);
+  });
+  socket.on("disconnect", () => {
+    // Find and remove the player from any room they were in
+    for (const [roomId, players] of Object.entries(rooms)) {
+      rooms[roomId] = players.filter((player) => player.id !== socket.id);
+      io.to(roomId).emit("updateGamePlayers", rooms[roomId]);
     }
   });
 });

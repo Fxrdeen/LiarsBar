@@ -6,9 +6,11 @@ import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import JoinGameDialog from "@/components/JoinGameDialog";
+import { useRouter } from "next/navigation";
 // import GameRoom from "./GameRoom";
 
 export default function FrontPage() {
+  const router = useRouter();
   const [username, setUsername] = useState("");
   const [isSettingUsername, setIsSettingUsername] = useState(true);
   const [isJoinGameOpen, setIsJoinGameOpen] = useState(false);
@@ -38,12 +40,13 @@ export default function FrontPage() {
       .toString(36)
       .substring(2, 8)
       .toUpperCase();
-    setRoomCode(newRoomCode);
+    router.push(`/room/${newRoomCode}`);
   };
 
   const handleJoinGame = (code: string) => {
     setRoomCode(code.toUpperCase());
     setIsJoinGameOpen(false);
+    router.push(`/room/${code}`);
   };
 
   // if (roomCode) {
