@@ -9,7 +9,9 @@ import { io } from "socket.io-client";
 import { motion, AnimatePresence } from "framer-motion";
 import { UserCircle } from "lucide-react";
 
-const socket = io("http://localhost:4000");
+const socket = io(
+  process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:4000"
+);
 
 interface Player {
   id: string;
