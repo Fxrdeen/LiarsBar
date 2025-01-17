@@ -22,6 +22,7 @@ export default function GameRoom() {
   const [isHost, setIsHost] = useState(false);
   const router = useRouter();
   const { id: roomId } = useParams();
+  const [connectionError, setConnectionError] = useState<string | null>(null);
 
   const handleLeaveRoom = () => {
     socket.emit("leaveRoom", { roomId, username: userName });
@@ -39,6 +40,16 @@ export default function GameRoom() {
         reconnectionDelay: 1000,
       }
     );
+
+    newSocket.on("connect", () => {
+      console.log("Connected to server");
+      setConnectionError(null);
+    });
+
+    newSocket.on("connect_error", (error) => {
+      console.error("Connection error:", error);
+      setConnectionError("Failed to connect to server");
+    });
 
     setSocket(newSocket);
 

@@ -5,9 +5,25 @@ import cors from "cors";
 
 const app = express();
 const server = http.createServer(app);
+
+const allowedOrigins = [
+  "http://localhost:3000",
+  "https://cardy-routelle.vercel.app", // Replace with your actual frontend domain
+];
+
 const io = new Server(server, {
   cors: {
-    origin: "*",
+    origin: (origin, callback) => {
+      // Allow requests with no origin (like mobile apps or curl requests)
+      if (!origin) return callback(null, true);
+
+      if (allowedOrigins.indexOf(origin) !== -1) {
+        callback(null, true);
+      } else {
+        console.log("Not allowed by CORS:", origin);
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
     methods: ["GET", "POST"],
     credentials: true,
   },
