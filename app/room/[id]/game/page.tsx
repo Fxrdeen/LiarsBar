@@ -15,7 +15,8 @@ interface Player {
 }
 interface ChatMessage {
   id: string;
-  sender: string;
+  username?: string;
+  sender?: string;
   message: string;
   timestamp: number;
 }
@@ -99,12 +100,12 @@ const GamePage = () => {
     });
 
     // Listen for new messages
-    socket.on("newMessage", ({ sender, message, timestamp }: ChatMessage) => {
+    socket.on("newMessage", ({ username, message, timestamp }: ChatMessage) => {
       setMessages((prev) => [
         ...prev,
         {
           id: timestamp.toString(),
-          sender,
+          sender: username,
           message,
           timestamp,
         },
