@@ -9,10 +9,6 @@ import GameArea from "@/components/GameArea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 
-const socket = io(
-  process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:4000"
-);
-
 interface Player {
   username: string;
   id: string;
@@ -26,63 +22,89 @@ interface ChatMessage {
 const GamePage = () => {
   const { id: roomId } = useParams();
   const router = useRouter();
+  const [socket, setSocket] = useState<any>(null);
   const [players, setPlayers] = useState<Player[]>([]);
   const username = localStorage.getItem("username");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState("");
+
+  // Initialize socket connection
+  useEffect(() => {
+    const newSocket = io(
+      process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:4000",
+      {
+        transports: ["websocket", "polling"],
+        reconnection: true,
+        reconnectionAttempts: 5,
+        reconnectionDelay: 1000,
+      }
+    );
+
+    setSocket(newSocket);
+
+    return () => {
+      if (newSocket) newSocket.close();
+    };
+  }, []);
+
   const handleLeaveGame = (username: string) => {
-    socket.emit("leaveRoom", { roomId, username });
-    router.push("/");
-  };
-  const handleSendMessage = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (newMessage.trim()) {
-      const timestamp = Date.now();
-      // Emit the message to the server
-      socket.emit("sendMessage", {
-        roomId,
-        username,
-        message: newMessage,
-        timestamp,
-      });
-      // Add message to local state
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: timestamp.toString(),
-          sender: username!,
-          message: newMessage,
-          timestamp,
-        },
-      ]);
-      setNewMessage("");
+    if (socket) {
+      socket.emit("leaveRoom", { roomId, username });
+      router.push("/");
     }
   };
+
+  const handleSendMessage = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!socket || !newMessage.trim()) return;
+
+    const timestamp = Date.now();
+    socket.emit("sendMessage", {
+      roomId,
+      username,
+      message: newMessage,
+      timestamp,
+    });
+
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: timestamp.toString(),
+        sender: username!,
+        message: newMessage,
+        timestamp,
+      },
+    ]);
+    setNewMessage("");
+  };
+
+  // Handle game logic and socket events
   useEffect(() => {
+    if (!socket) return;
+
     const username = localStorage.getItem("username");
     if (!username) {
       router.push("/");
       return;
     }
 
-    socket.connect();
-
     // Join the game room with username
+    socket.connect();
     socket.emit("joinGameRoom", { roomId, username });
 
     // Listen for player updates
-    socket.on("updateGamePlayers", (playersList) => {
+    socket.on("updateGamePlayers", (playersList: Player[]) => {
       console.log("Received players:", playersList);
       setPlayers(playersList);
     });
 
     // Listen for new messages
-    socket.on("newMessage", ({ username, message, timestamp }) => {
+    socket.on("newMessage", ({ sender, message, timestamp }: ChatMessage) => {
       setMessages((prev) => [
         ...prev,
         {
           id: timestamp.toString(),
-          sender: username,
+          sender,
           message,
           timestamp,
         },
@@ -94,7 +116,7 @@ const GamePage = () => {
       socket.off("newMessage");
       socket.disconnect();
     };
-  }, [roomId, router]);
+  }, [socket, roomId, router]);
 
   return (
     <div className="flex h-screen bg-gray-900 text-gray-100">

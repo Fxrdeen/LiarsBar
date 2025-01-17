@@ -36,6 +36,9 @@ yarn-error.log*
 # vercel
 .vercel
 
+# ping log
+ping-log.txt
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

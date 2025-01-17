@@ -9,16 +9,13 @@ import { io } from "socket.io-client";
 import { motion, AnimatePresence } from "framer-motion";
 import { UserCircle } from "lucide-react";
 
-const socket = io(
-  process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:4000"
-);
-
 interface Player {
-  id: string;
   username: string;
+  id: string;
 }
 
 export default function GameRoom() {
+  const [socket, setSocket] = useState<any>(null);
   const [players, setPlayers] = useState<Player[]>([]);
   const [userName, setUserName] = useState("");
   const [connected, setConnected] = useState(false);
@@ -33,6 +30,26 @@ export default function GameRoom() {
   };
 
   useEffect(() => {
+    const newSocket = io(
+      process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:4000",
+      {
+        transports: ["websocket", "polling"],
+        reconnection: true,
+        reconnectionAttempts: 5,
+        reconnectionDelay: 1000,
+      }
+    );
+
+    setSocket(newSocket);
+
+    return () => {
+      if (newSocket) newSocket.close();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!socket) return;
+
     const storedUsername = localStorage.getItem("username");
     if (!storedUsername) {
       router.push("/");
@@ -44,7 +61,7 @@ export default function GameRoom() {
       socket.connect();
       socket.emit("joinRoom", { roomId, username: storedUsername });
 
-      socket.on("updatePlayers", (playersList) => {
+      socket.on("updatePlayers", (playersList: Player[]) => {
         setPlayers(playersList);
         setConnected(true);
         setIsHost(playersList[0]?.username === storedUsername);
@@ -72,7 +89,7 @@ export default function GameRoom() {
       socket.disconnect();
       window.removeEventListener("beforeunload", handleBeforeUnload);
     };
-  }, [roomId, router]);
+  }, [socket, roomId, router]);
 
   return (
     <div className="min-h-screen bg-gray-900 text-gray-100 p-4 md:p-8">
