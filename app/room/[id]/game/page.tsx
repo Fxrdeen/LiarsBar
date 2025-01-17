@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 interface Player {
   username: string;
   id: string;
+  cards: string[];
 }
 interface ChatMessage {
   id: string;
@@ -29,7 +30,23 @@ const GamePage = () => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState("");
 
-  // Initialize socket connection
+  const [revealedCard, setRevealedCard] = useState<string | null>(null);
+  const [isCardRevealed, setIsCardRevealed] = useState(false);
+  const [isCardMoved, setIsCardMoved] = useState(false);
+
+  useEffect(() => {
+    const cards = ["King", "Queen", "Ace"];
+    setRevealedCard(cards[Math.floor(Math.random() * cards.length)]);
+
+    setTimeout(() => {
+      setIsCardRevealed(true);
+    }, 500);
+
+    setTimeout(() => {
+      setIsCardMoved(true);
+    }, 5500);
+  }, []);
+
   useEffect(() => {
     const newSocket = io(
       process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:4000",
@@ -122,7 +139,7 @@ const GamePage = () => {
   return (
     <div className="flex h-screen bg-gray-900 text-gray-100">
       <div className="flex-grow">
-        <GameArea players={players} />
+        <GameArea players={players} currentPlayerId={username!} />
       </div>
       <div className="w-80 flex flex-col">
         <div className="flex flex-col h-full bg-gray-800">
