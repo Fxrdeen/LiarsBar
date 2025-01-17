@@ -107,6 +107,10 @@ io.on("connection", (socket) => {
       io.to(roomId).emit("updateGamePlayers", rooms[roomId]);
     }
   });
+  socket.on("sendMessage", ({ roomId, username, message, timestamp }) => {
+    // Broadcast to all OTHER clients in the room
+    socket.to(roomId).emit("newMessage", { username, message, timestamp });
+  });
 });
 
 const PORT = 4000;
