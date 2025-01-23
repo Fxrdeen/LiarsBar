@@ -29,13 +29,19 @@ const io = new Server(server, {
   },
 });
 
+const cards = ["King", "Queen", "Ace"];
+
 interface Player {
   id: string;
   username: string;
+  cards?: string[];
 }
 
 interface Rooms {
-  [roomId: string]: Player[];
+  [roomId: string]: {
+    players: Player[];
+    card: string;
+  };
 }
 
 const rooms: Rooms = {}; // Store rooms and their players
@@ -50,68 +56,84 @@ app.get("/", (req, res) => {
 io.on("connection", (socket) => {
   socket.on("joinRoom", ({ roomId, username }) => {
     if (!rooms[roomId]) {
-      rooms[roomId] = [];
+      rooms[roomId] = {
+        players: [],
+        card: "",
+      };
     }
 
     // Check if player already exists in the room
-    const existingPlayerIndex = rooms[roomId].findIndex(
+    const existingPlayerIndex = rooms[roomId].players.findIndex(
       (player) => player.username === username
     );
 
     if (existingPlayerIndex !== -1) {
       // Update existing player's socket ID
-      rooms[roomId][existingPlayerIndex].id = socket.id;
+      rooms[roomId].players[existingPlayerIndex].id = socket.id;
     } else {
       // Add new player with unique ID combining socket.id and username
       const player = {
         id: `${socket.id}_${username}`,
         username,
       };
-      rooms[roomId].push(player);
+      rooms[roomId].players.push(player);
     }
 
     socket.join(roomId);
-    io.to(roomId).emit("updatePlayers", rooms[roomId]);
+    io.to(roomId).emit("updatePlayers", rooms[roomId].players);
     console.log(`${username} joined room ${roomId}`);
   });
   socket.on("leaveRoom", ({ roomId, username }) => {
     const room = rooms[roomId];
     if (room) {
       // Remove the player from the room
-      const updatedPlayers = room.filter(
+      const updatedPlayers = room.players.filter(
         (player) => player.username !== username
       );
-      rooms[roomId] = updatedPlayers;
+      rooms[roomId].players = updatedPlayers;
 
       // Notify all remaining players in the room
       io.to(roomId).emit("updatePlayers", updatedPlayers);
     }
     socket.leave(roomId);
   });
-  socket.on("startGame", ({ roomId }) => {
+  socket.on("startGame", ({ roomId, players }) => {
     io.to(roomId).emit("gameStarted");
+  });
+  socket.on("giveCards", ({ roomId }) => {
+    for (const player of rooms[roomId].players) {
+      player.cards = Array(5)
+        .fill(null)
+        .map(() => cards[Math.floor(Math.random() * cards.length)]);
+    }
+    rooms[roomId].card = cards[Math.floor(Math.random() * cards.length)];
+    io.to(roomId).emit("updateRoomPlayers", rooms[roomId].players);
+    io.to(roomId).emit("updateRoomCard", rooms[roomId].card);
   });
   socket.on("joinGameRoom", ({ roomId, username }) => {
     socket.join(roomId);
 
     // If the room doesn't exist in our rooms object, initialize it
     if (!rooms[roomId]) {
-      rooms[roomId] = [];
+      rooms[roomId] = {
+        players: [],
+        card: "",
+      };
     }
 
     // Add the player if they're not already in the room
-    const playerExists = rooms[roomId].find(
+    const playerExists = rooms[roomId].players.find(
       (player) => player.username === username
     );
     if (!playerExists) {
-      rooms[roomId].push({
+      rooms[roomId].players.push({
         id: socket.id,
         username: username,
       });
     }
 
     // Emit the updated player list to all clients in the room
-    io.to(roomId).emit("updateGamePlayers", rooms[roomId]);
+    io.to(roomId).emit("updateGamePlayers", rooms[roomId].players);
 
     // Debug log
     console.log(`Players in room ${roomId}:`, rooms[roomId]);
@@ -119,8 +141,10 @@ io.on("connection", (socket) => {
   socket.on("disconnect", () => {
     // Find and remove the player from any room they were in
     for (const [roomId, players] of Object.entries(rooms)) {
-      rooms[roomId] = players.filter((player) => player.id !== socket.id);
-      io.to(roomId).emit("updateGamePlayers", rooms[roomId]);
+      rooms[roomId].players = rooms[roomId].players.filter(
+        (player) => player.id !== socket.id
+      );
+      io.to(roomId).emit("updateGamePlayers", rooms[roomId].players);
     }
   });
   socket.on("sendMessage", ({ roomId, username, message, timestamp }) => {
