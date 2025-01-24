@@ -1,7 +1,7 @@
 "use client";
 
 import { useParams, useRouter } from "next/navigation";
-import { io } from "socket.io-client";
+import { io, Socket } from "socket.io-client";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
@@ -24,7 +24,7 @@ interface ChatMessage {
 const GamePage = () => {
   const { id: roomId } = useParams();
   const router = useRouter();
-  const [socket, setSocket] = useState<any>(null);
+  const [socket, setSocket] = useState<Socket | null>(null);
   const [players, setPlayers] = useState<Player[]>([]);
   const username = localStorage.getItem("username");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -33,7 +33,7 @@ const GamePage = () => {
   const [revealedCard, setRevealedCard] = useState<string | null>(null);
   const [isCardRevealed, setIsCardRevealed] = useState(false);
   const [isCardMoved, setIsCardMoved] = useState(false);
-
+  const [realPlayers, setRealPlayers] = useState<Player[]>([]);
   useEffect(() => {
     const cards = ["King", "Queen", "Ace"];
     setRevealedCard(cards[Math.floor(Math.random() * cards.length)]);
@@ -109,13 +109,20 @@ const GamePage = () => {
     // Join the game room with username
     socket.connect();
     socket.emit("joinGameRoom", { roomId, username });
-
+    socket.emit("giveCards", { roomId });
     // Listen for player updates
     socket.on("updateGamePlayers", (playersList: Player[]) => {
       console.log("Received players:", playersList);
       setPlayers(playersList);
     });
-
+    socket.on("updateRoomCard", (card: string) => {
+      setRevealedCard(card);
+      console.log("Received card From Server:", card);
+    });
+    socket.on("updateRoomPlayers", (players: Player[]) => {
+      setRealPlayers(players);
+      console.log("Received players From Server:", players);
+    });
     // Listen for new messages
     socket.on("newMessage", ({ username, message, timestamp }: ChatMessage) => {
       setMessages((prev) => [
@@ -139,7 +146,14 @@ const GamePage = () => {
   return (
     <div className="flex h-screen bg-gray-900 text-gray-100">
       <div className="flex-grow">
-        <GameArea players={players} currentPlayerId={username!} />
+        {socket && (
+          <GameArea
+            socket={socket}
+            players={realPlayers}
+            currentPlayerId={username!}
+            card={revealedCard!}
+          />
+        )}
       </div>
       <div className="w-80 flex flex-col">
         <div className="flex flex-col h-full bg-gray-800">

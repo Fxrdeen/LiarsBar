@@ -12,6 +12,7 @@ import { UserCircle } from "lucide-react";
 interface Player {
   username: string;
   id: string;
+  cards: string[];
 }
 
 export default function GameRoom() {
@@ -146,7 +147,7 @@ export default function GameRoom() {
           </h2>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             <AnimatePresence>
-              {players.map((player) => (
+              {players.map((player: Player) => (
                 <motion.div
                   key={player.id}
                   className="flex items-center space-x-2 bg-gray-700 p-3 rounded-md"

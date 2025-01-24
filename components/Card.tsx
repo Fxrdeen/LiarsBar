@@ -1,4 +1,5 @@
 import { motion } from "framer-motion";
+import Image from "next/image";
 
 interface CardProps {
   value: string;
@@ -37,6 +38,13 @@ export function Card({ value, isVisible, isVertical = false }: CardProps) {
         </div>
       ) : (
         <div className="w-full h-full bg-red-500 rounded-md flex items-center justify-center">
+          <Image
+            src={`/${value}.png`}
+            alt="Card Back"
+            width={100}
+            height={100}
+            className="absolute"
+          />
           <div
             className={`
             ${isVertical ? "w-10 h-16" : "w-16 h-24"} 

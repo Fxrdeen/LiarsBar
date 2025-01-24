@@ -4,6 +4,8 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Card } from "./Card";
 import { RevealCard } from "./RevealCard";
+import { Socket } from "socket.io-client";
+import { Button } from "./ui/button";
 
 interface Player {
   id: string;
@@ -15,34 +17,23 @@ interface GameAreaProps {
   players: Player[];
   currentPlayerId: string;
   onPlayersUpdate?: (players: Player[]) => void;
+  socket: Socket;
+  card: string;
 }
 
 export default function GameArea({
   players,
   currentPlayerId,
   onPlayersUpdate,
+  socket,
+  card,
 }: GameAreaProps) {
   const [revealedCard, setRevealedCard] = useState<string | null>(null);
   const [isCardRevealed, setIsCardRevealed] = useState(false);
   const [isCardMoved, setIsCardMoved] = useState(false);
-  const [localPlayers, setLocalPlayers] = useState<Player[]>(players);
-  console.log(players);
+  const [localPlayers, setLocalPlayers] = useState<Player[]>([]);
+
   useEffect(() => {
-    const cards = ["King", "Queen", "Ace"];
-    setRevealedCard(cards[Math.floor(Math.random() * cards.length)]);
-
-    const generatePlayerCards = () => {
-      return players.map((player) => ({
-        ...player,
-        cards: Array(5)
-          .fill(null)
-          .map(() => cards[Math.floor(Math.random() * cards.length)]),
-      }));
-    };
-
-    const updatedPlayers = generatePlayerCards();
-    setLocalPlayers(updatedPlayers);
-
     setTimeout(() => {
       setIsCardRevealed(true);
     }, 500);
@@ -67,6 +58,18 @@ export default function GameArea({
     }
   };
 
+  const getOrderedPlayers = (players: Player[]) => {
+    const currentPlayerIndex = players.findIndex(
+      (p) => p.id === currentPlayerId
+    );
+    if (currentPlayerIndex === -1) return players;
+
+    const reorderedPlayers = [...players];
+    const currentPlayer = reorderedPlayers.splice(currentPlayerIndex, 1)[0];
+    reorderedPlayers.unshift(currentPlayer);
+    return reorderedPlayers;
+  };
+
   return (
     <div className="relative w-full h-full bg-gray-900 rounded-lg overflow-hidden">
       {/* Center play area */}
@@ -80,7 +83,7 @@ export default function GameArea({
               transition={{ duration: 0.5 }}
               className="z-10"
             >
-              <RevealCard card={revealedCard} isRevealed={isCardRevealed} />
+              {card && <RevealCard card={card} isRevealed={isCardRevealed} />}
             </motion.div>
           )}
         </AnimatePresence>
@@ -96,14 +99,14 @@ export default function GameArea({
         {isCardMoved && (
           <div className="bg-gray-800 rounded-lg p-2 shadow-lg">
             <h3 className="text-sm font-bold text-amber-500">
-              {revealedCard} Table
+              {card && `${card}'s Table`}
             </h3>
           </div>
         )}
       </motion.div>
 
       {/* Players */}
-      {localPlayers.map((player, index) => {
+      {getOrderedPlayers(players).map((player, index) => {
         const isCurrentPlayer = player.id === currentPlayerId;
         const { x, y, translate, width } = getPlayerPosition(
           index,
@@ -151,6 +154,15 @@ export default function GameArea({
           </motion.div>
         );
       })}
+      <div className="absolute bottom-4 right-4">
+        <Button
+          onClick={() => console.log("clicked")}
+          disabled={false}
+          className="bg-amber-600 hover:bg-amber-700 text-white px-8 py-2"
+        >
+          Play Selected Cards
+        </Button>
+      </div>
     </div>
   );
 }
