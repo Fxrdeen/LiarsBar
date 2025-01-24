@@ -101,6 +101,14 @@ io.on("connection", (socket) => {
     io.to(roomId).emit("gameStarted");
   });
   socket.on("giveCards", ({ roomId }) => {
+    const alreadyHaveCards = rooms[roomId].players.some(
+      (player) => player.cards && player.cards.length > 0
+    );
+    if (alreadyHaveCards) {
+      io.to(roomId).emit("updateRoomPlayers", rooms[roomId].players);
+      io.to(roomId).emit("updateRoomCard", rooms[roomId].card);
+      return;
+    }
     for (const player of rooms[roomId].players) {
       player.cards = Array(5)
         .fill(null)
@@ -110,6 +118,7 @@ io.on("connection", (socket) => {
     io.to(roomId).emit("updateRoomPlayers", rooms[roomId].players);
     io.to(roomId).emit("updateRoomCard", rooms[roomId].card);
   });
+  socket.on("alreadyPlayerExistWithCards", ({ roomId, username }) => {});
   socket.on("joinGameRoom", ({ roomId, username }) => {
     socket.join(roomId);
 

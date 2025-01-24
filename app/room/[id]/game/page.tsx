@@ -110,7 +110,6 @@ const GamePage = () => {
     socket.connect();
     socket.emit("joinGameRoom", { roomId, username });
     socket.emit("giveCards", { roomId });
-    // Listen for player updates
     socket.on("updateGamePlayers", (playersList: Player[]) => {
       console.log("Received players:", playersList);
       setPlayers(playersList);
